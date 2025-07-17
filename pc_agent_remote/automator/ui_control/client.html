@@ -1,0 +1,457 @@
+    <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PC-AGENT-REMOTE Web Interface</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    /* --- CSS Variables and Base Styles --- */
+    :root {
+      --background-color: #121212;
+      --surface-color: #1e1e1e;
+      --primary-color: #3498db;
+      --text-color: #e0e0e0;
+      --text-muted-color: #888;
+      --border-color: #333;
+      --success-color: #2ecc71;
+      --error-color: #e74c3c;
+      --border-radius: 12px;
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: "SF Mono", "Monaco", "Inconsolata", "Roboto Mono", monospace;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-family);
+      background-color: var(--background-color);
+      color: var(--text-color);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* --- Layout and Container --- */
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .header {
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .card {
+      background-color: var(--surface-color);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      padding: 1.5rem;
+    }
+
+    .card h2 {
+      font-size: 1.25rem;
+      font-weight: 500;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    /* --- Form Elements --- */
+    .form-grid {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.9rem;
+      color: var(--text-muted-color);
+      margin-bottom: 0.5rem;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      background-color: var(--background-color);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-color);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 20%, transparent);
+    }
+
+    .form-control::placeholder {
+      color: var(--text-muted-color);
+    }
+
+    select.form-control {
+      -webkit-appearance: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23888' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+      background-position: right 1rem center;
+      background-repeat: no-repeat;
+      background-size: 1em;
+      padding-right: 2.5rem;
+    }
+
+    .btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.8rem 1rem;
+      margin-top: 1rem;
+      font-size: 1rem;
+      font-weight: 500;
+      color: #fff;
+      background-color: var(--primary-color);
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn:hover:not(:disabled) {
+      background-color: color-mix(in srgb, var(--primary-color) 90%, #000);
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .loading-spinner {
+      width: 1em;
+      height: 1em;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* --- Status Indicator --- */
+    .status-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+      color: var(--text-muted-color);
+    }
+
+    .status-indicator .pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: currentColor;
+    }
+
+    .status-indicator.connected {
+      color: var(--success-color);
+    }
+
+    .status-indicator.disconnected {
+      color: var(--error-color);
+    }
+
+    .pulse.connected {
+      animation: pulse-green 2s infinite;
+    }
+
+    .pulse.disconnected {
+      animation: pulse-red 2s infinite;
+    }
+
+    @keyframes pulse-green {
+      0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--success-color) 70%, transparent); }
+      70% { box-shadow: 0 0 0 10px transparent; }
+      100% { box-shadow: 0 0 0 0 transparent; }
+    }
+
+    @keyframes pulse-red {
+      0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--error-color) 70%, transparent); }
+      70% { box-shadow: 0 0 0 10px transparent; }
+      100% { box-shadow: 0 0 0 0 transparent; }
+    }
+
+    /* --- Screen and Logs --- */
+    .screen-frame {
+      background-color: #000;
+      border-radius: 8px;
+      padding: 0.5rem;
+      border: 1px solid var(--border-color);
+    }
+
+    #screen {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 4px;
+      max-height: 60vh;
+      object-fit: contain;
+    }
+
+    #screenPlaceholder {
+      width: 100%;
+      min-height: 300px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: var(--text-muted-color);
+      font-size: 0.9rem;
+      border: 2px dashed var(--border-color);
+      border-radius: 4px;
+    }
+
+    #output {
+      background-color: #000;
+      color: var(--text-color);
+      padding: 1rem;
+      border-radius: 8px;
+      height: 300px;
+      overflow-y: auto;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      border: 1px solid var(--border-color);
+    }
+
+    /* --- Scrollbar --- */
+    ::-webkit-scrollbar {
+      width: 10px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--surface-color);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #555;
+      border-radius: 5px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #777;
+    }
+
+    /* --- Responsive Design --- */
+    @media (max-width: 600px) {
+      body {
+        font-size: 14px;
+      }
+      .container {
+        padding: 1rem;
+        gap: 1rem;
+      }
+      .card {
+        padding: 1rem;
+      }
+      .header h1 {
+        font-size: 1.75rem;
+      }
+      .form-control {
+        font-size: 16px; /* Prevents iOS zoom on focus */
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>🛸 PC-AGENT-REMOTE Web Interface</h1>
+      <div id="connectionStatus" class="status-indicator disconnected">
+        <div class="pulse disconnected"></div>
+        <span>Connecting...</span>
+      </div>
+    </header>
+
+    <div class="card">
+      <h2><span class="emoji">🚀</span>Task Configuration</h2>
+      <form id="ufoForm" onsubmit="startUFOTask(event)">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="task">Task Name</label>
+            <input type="text" id="task" class="form-control" placeholder="Auto-generated if empty" />
+          </div>
+          <div class="form-group">
+            <label for="mode">Execution Mode</label>
+            <select id="mode" class="form-control">
+              <option value="normal">Normal</option>
+              <option value="follower">Follower</option>
+              <option value="batch_normal">Batch Normal</option>
+              <option value="operator">Operator</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="plan">Plan Path</label>
+            <input type="text" id="plan" class="form-control" placeholder="Optional plan file path" />
+          </div>
+          <div class="form-group">
+            <label for="request">Request Description</label>
+            <input type="text" id="request" class="form-control" placeholder="What should PC-AGENT-REMOTE do?" required />
+          </div>
+        </div>
+        <button type="submit" class="btn">
+          <span id="btnText">Launch PC-AGENT-REMOTE Task</span>
+        </button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2><span class="emoji">🖥️</span>Live Screen Share</h2>
+      <div class="screen-frame">
+        <img id="screen" alt="Screen share from PC-AGENT-REMOTE" style="display: none;" />
+        <div id="screenPlaceholder">
+          <div>
+            <span style="font-size: 2rem;">📱</span>
+            <p>Waiting for screen share...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="emoji">📋</span>System Logs</h2>
+      <pre id="output"></pre>
+    </div>
+  </div>
+
+  <script>
+    // --- ALL JAVASCRIPT LOGIC IS UNCHANGED ---
+
+    const socket = io("https://alabama-tourism-worry-showing.trycloudflare.com");
+
+    socket.on("connect", () => {
+      log("✅ Connected to server");
+      updateConnectionStatus(true);
+      socket.emit("start_screen_share");
+    });
+
+    socket.on("disconnect", () => {
+      log("❌ Disconnected from server");
+      updateConnectionStatus(false);
+    });
+
+    socket.on("screen_frame", data => {
+      const screen = document.getElementById("screen");
+      const placeholder = document.getElementById("screenPlaceholder");
+      
+      screen.src = `data:image/jpeg;base64,${data.image}`;
+      screen.style.display = "block";
+      placeholder.style.display = "none";
+    });
+
+    socket.on("ufo_started", data => {
+      log("🚀 UFO started:\n" + JSON.stringify(data, null, 2));
+      updateButtonState(false);
+    });
+
+    socket.on("ufo_done", data => {
+      log("✅ UFO task completed:\n" + JSON.stringify(data, null, 2));
+      updateButtonState(false);
+    });
+
+    socket.on("ufo_error", data => {
+      log("❌ UFO Error:\n" + JSON.stringify(data, null, 2));
+      updateButtonState(false);
+    });
+
+    function updateConnectionStatus(connected) {
+      const statusEl = document.getElementById("connectionStatus");
+      const pulseEl = statusEl.querySelector('.pulse');
+      const textEl = statusEl.querySelector('span');
+      
+      if (connected) {
+        statusEl.className = "status-indicator connected";
+        pulseEl.className = "pulse connected";
+        textEl.textContent = 'Connected';
+      } else {
+        statusEl.className = "status-indicator disconnected";
+        pulseEl.className = "pulse disconnected";
+        textEl.textContent = 'Disconnected';
+      }
+    }
+
+    function updateButtonState(loading) {
+      const btn = document.querySelector('.btn');
+      const btnText = document.getElementById('btnText');
+      
+      if (loading) {
+        btn.disabled = true;
+        btnText.innerHTML = '<div class="loading-spinner"></div>Launching...';
+      } else {
+        btn.disabled = false;
+        btnText.textContent = 'Launch PC-AGENT-REMOTE Task';
+      }
+    }
+
+    function startUFOTask(event) {
+      event.preventDefault();
+      updateButtonState(true);
+
+      const task = document.getElementById("task").value || `task-${Date.now()}`;
+      const mode = document.getElementById("mode").value;
+      const plan = document.getElementById("plan").value;
+      const request = document.getElementById("request").value;
+
+      log("📤 Launching UFO task...");
+
+      fetch("https://alabama-tourism-worry-showing.trycloudflare.com/api/launch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ task, mode, plan, request })
+      })
+      .then(async (res) => {
+        const text = await res.text();
+        try {
+          const data = JSON.parse(text);
+          log("�� Launch response:\n" + JSON.stringify(data, null, 2));
+        } catch (err) {
+          log("❌ Failed to parse JSON response:\n" + text);
+        }
+      })
+      .catch(err => {
+        log("❌ Launch request failed:\n" + err);
+        updateButtonState(false);
+      });
+    }
+
+    function log(message) {
+      const output = document.getElementById("output");
+      const timestamp = new Date().toLocaleTimeString();
+      output.textContent += `[${timestamp}] ${message}\n`;
+      output.scrollTop = output.scrollHeight;
+    }
+
+    // Initialize with a welcome message
+    log("🌟 PC-AGENT-REMOTE Web Interface initialized. Waiting for connection...");
+  </script>
+</body>
+</html>
