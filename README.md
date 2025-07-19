@@ -81,7 +81,7 @@ HOST_AGENT:
 
 [View the interactive architecture diagram on Eraser](https://app.eraser.io/workspace/njSdk3itd9sXnLPBT7bd?origin=share)
 
-> ![PC-AGENT-REMOTE Architecture Diagram](https://app.eraser.io/api/workspaces/njSdk3itd9sXnLPBT7bd/image?format=png)
+> ![PC-AGENT-REMOTE Architecture Diagram](./screenshots/architecture_diagram.png)
 
 ---
 
