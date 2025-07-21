@@ -8,6 +8,9 @@
 
 PC-AGENT-REMOTE is an advanced, real-world AI agent system that lets you control your Windows PC from any device using natural language. It’s built on top of Microsoft's agent framework and now integrates directly with the IO Intelligence API, making it a perfect fit for the hackathon’s “Autonomous Agents in the Real World” track.
 
+[![Watch on YouTube](https://img.shields.io/badge/Watch%20on-YouTube-red?logo=youtube)](https://youtu.be/TYUL0qPw6hs)
+
+
 ---
 
 ## 🏆 Why It’s a Great Fit for the Hackathon
